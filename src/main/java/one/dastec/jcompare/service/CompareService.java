@@ -77,6 +77,8 @@ public class CompareService {
         List<DiffNode> removedFiles = new ArrayList<>();
         collectAddedAndRemovedFiles(root, addedFiles, removedFiles);
 
+        Set<DiffNode> toRemoveFromTree = new HashSet<>();
+
         for (DiffNode added : addedFiles) {
             for (DiffNode removed : removedFiles) {
                 if (added.getStatus() == DiffNode.DiffStatus.ADDED && removed.getStatus() == DiffNode.DiffStatus.REMOVED) {
@@ -95,10 +97,28 @@ public class CompareService {
                             added.setPercentage(fileDiff.percentage());
                         }
                         added.setSourcePath(removed.getRelativePath());
+                        toRemoveFromTree.add(removed);
+                        break; // Move to next added file once matched
                     }
                 }
             }
         }
+
+        for (DiffNode node : toRemoveFromTree) {
+            removeNodeFromTree(root, node);
+        }
+    }
+
+    private boolean removeNodeFromTree(DiffNode parent, DiffNode toRemove) {
+        if (parent.getChildren().remove(toRemove)) {
+            return true;
+        }
+        for (DiffNode child : parent.getChildren()) {
+            if (removeNodeFromTree(child, toRemove)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void collectAddedAndRemovedFiles(DiffNode node, List<DiffNode> added, List<DiffNode> removed) {

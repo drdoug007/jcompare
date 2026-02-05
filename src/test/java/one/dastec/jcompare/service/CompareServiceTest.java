@@ -258,6 +258,46 @@ class CompareServiceTest {
         // but it should not crash.
     }
     @Test
+    void testFileMoveNoRemovedNode() throws IOException {
+        Path left = tempDir.resolve("left_move");
+        Path right = tempDir.resolve("right_move");
+        Files.createDirectories(left.resolve("dir1"));
+        Files.createDirectories(right.resolve("dir2"));
+
+        Files.writeString(left.resolve("dir1/moved.txt"), "same content");
+        Files.writeString(right.resolve("dir2/moved.txt"), "same content");
+
+        DiffNode result = compareService.compareDirectories(left, right);
+
+        // Verify the MOVED node exists
+        List<CompareService.DiffEntry> entries = compareService.flatten(result);
+        assertTrue(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.MOVED && e.relativePath().equals("dir2/moved.txt")), "Should have MOVED status");
+
+        // Verify that the original REMOVED node is NOT present
+        assertFalse(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.REMOVED && e.relativePath().equals("dir1/moved.txt")), "Should NOT show up as REMOVED");
+    }
+
+    @Test
+    void testFileMoveModifiedNoRemovedNode() throws IOException {
+        Path left = tempDir.resolve("left_move_mod");
+        Path right = tempDir.resolve("right_move_mod");
+        Files.createDirectories(left.resolve("dir1"));
+        Files.createDirectories(right.resolve("dir2"));
+
+        Files.writeString(left.resolve("dir1/moved.txt"), "content A");
+        Files.writeString(right.resolve("dir2/moved.txt"), "content B");
+
+        DiffNode result = compareService.compareDirectories(left, right);
+
+        // Verify the MOVED_MODIFIED node exists
+        List<CompareService.DiffEntry> entries = compareService.flatten(result);
+        assertTrue(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.MOVED_MODIFIED && e.relativePath().equals("dir2/moved.txt")), "Should have MOVED_MODIFIED status");
+
+        // Verify that the original REMOVED node is NOT present
+        assertFalse(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.REMOVED && e.relativePath().equals("dir1/moved.txt")), "Should NOT show up as REMOVED");
+    }
+
+    @Test
     void testFileMove() throws IOException {
         Path left = tempDir.resolve("left");
         Path right = tempDir.resolve("right");
@@ -277,10 +317,9 @@ class CompareServiceTest {
         assertEquals(DiffNode.DiffStatus.MOVED, movedFile.getStatus());
         assertEquals("old-loc/MyClass.java", movedFile.getSourcePath());
         
-        // The old location should still show as removed
+        // The old location should be EMPTY (REMOVED node removed)
         DiffNode oldLoc = result.getChildren().stream().filter(n -> n.getName().equals("old-loc")).findFirst().orElseThrow();
-        DiffNode removedFile = oldLoc.getChildren().get(0);
-        assertEquals(DiffNode.DiffStatus.REMOVED, removedFile.getStatus());
+        assertTrue(oldLoc.getChildren().isEmpty(), "REMOVED node should have been removed from the tree");
     }
 
     @Test
