@@ -20,8 +20,11 @@
         .line-removed { background-color: #fee2e2; }
         .line-modified { background-color: #fef3c7; }
         .line-number { color: #9ca3af; text-align: right; width: 3rem; padding-right: 1rem; user-select: none; }
-        pre { margin: 0 !important; border-radius: 0 !important; background: transparent !important; }
-        code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important; font-size: 0.875rem !important; }
+        /* Tighten spacing to avoid an extra blank line between rows */
+        pre { margin: 0 !important; padding: 0 !important; line-height: 1.1 !important; border-radius: 0 !important; background: transparent !important; }
+        code { display: block; white-space: pre; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important; font-size: 0.875rem !important; line-height: 1.1 !important; padding: 0 !important; }
+        td { padding-top: 0 !important; padding-bottom: 0 !important; }
+        tr { height: auto !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans text-gray-900">
@@ -62,12 +65,12 @@
                     <table class="w-full border-collapse">
                         @for(int i = 0; i < fileDiff.lines().size(); i++)
                             @if(fileDiff.lines().get(i).left() != null)
-                                <tr class="line-${fileDiff.lines().get(i).status().name().toLowerCase()} h-6">
+                                <tr class="line-${fileDiff.lines().get(i).status().name().toLowerCase()}">
                                     <td class="line-number text-xs border-r border-gray-100">${i + 1}</td>
                                     <td class="px-2 py-0"><pre><code class="language-java">${fileDiff.lines().get(i).left()}</code></pre></td>
                                 </tr>
                             @else
-                                <tr class="bg-gray-50 h-6">
+                                <tr class="bg-gray-50">
                                     <td class="line-number text-xs border-r border-gray-100"></td>
                                     <td class="px-2 py-0"></td>
                                 </tr>
@@ -79,12 +82,12 @@
                     <table class="w-full border-collapse">
                         @for(int i = 0; i < fileDiff.lines().size(); i++)
                             @if(fileDiff.lines().get(i).right() != null)
-                                <tr class="line-${fileDiff.lines().get(i).status().name().toLowerCase()} h-6">
+                                <tr class="line-${fileDiff.lines().get(i).status().name().toLowerCase()}">
                                     <td class="line-number text-xs border-r border-gray-100">${i + 1}</td>
                                     <td class="px-2 py-0"><pre><code class="language-java">${fileDiff.lines().get(i).right()}</code></pre></td>
                                 </tr>
                             @else
-                                <tr class="bg-gray-50 h-6">
+                                <tr class="bg-gray-50">
                                     <td class="line-number text-xs border-r border-gray-100"></td>
                                     <td class="px-2 py-0"></td>
                                 </tr>
