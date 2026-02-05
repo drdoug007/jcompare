@@ -64,9 +64,26 @@
 
     function goUp() {
         if (!currentPath) return;
-        const parts = currentPath.split('/');
-        parts.pop();
-        currentPath = parts.join('/') || "/";
+        // Handle both forward and backward slashes for cross-platform compatibility
+        const separator = currentPath.includes('\\') ? '\\' : '/';
+        const parts = currentPath.split(separator);
+        
+        // Remove trailing empty part if path ends with slash
+        if (parts.length > 0 && parts[parts.length - 1] === "") {
+            parts.pop();
+        }
+        
+        if (parts.length > 1) {
+            parts.pop();
+            currentPath = parts.join(separator);
+            // If we're on Unix and it's empty, it should be /
+            if (currentPath === "" && separator === '/') currentPath = "/";
+            // On Windows, if we have "C:", we should keep it as "C:\" or "C:"
+            if (currentPath.endsWith(":") && separator === '\\') currentPath += "\\";
+        } else {
+            // Root reached
+            currentPath = separator === '\\' ? currentPath : "/";
+        }
         loadDirectories(currentPath);
     }
 
