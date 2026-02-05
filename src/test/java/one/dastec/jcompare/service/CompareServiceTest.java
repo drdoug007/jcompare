@@ -282,4 +282,26 @@ class CompareServiceTest {
         DiffNode removedFile = oldLoc.getChildren().get(0);
         assertEquals(DiffNode.DiffStatus.REMOVED, removedFile.getStatus());
     }
+
+    @Test
+    void testFileMoveModified() throws IOException {
+        Path left = tempDir.resolve("left2");
+        Path right = tempDir.resolve("right2");
+        Files.createDirectories(left.resolve("dir1"));
+        Files.createDirectories(right.resolve("dir2"));
+
+        Files.writeString(left.resolve("dir1/App.java"), "public class App {}");
+        Files.writeString(right.resolve("dir2/App.java"), "public class App { // modified }");
+
+        DiffNode result = compareService.compareDirectories(left, right);
+
+        DiffNode dir2 = result.getChildren().stream().filter(n -> n.getName().equals("dir2")).findFirst().orElseThrow();
+        DiffNode movedFile = dir2.getChildren().get(0);
+
+        assertEquals("App.java", movedFile.getName());
+        assertEquals(DiffNode.DiffStatus.MOVED_MODIFIED, movedFile.getStatus());
+        assertEquals("dir1/App.java", movedFile.getSourcePath());
+        assertTrue(movedFile.getModified() > 0 || movedFile.getAdded() > 0 || movedFile.getRemoved() > 0);
+        assertTrue(movedFile.getPercentage() > 0);
+    }
 }

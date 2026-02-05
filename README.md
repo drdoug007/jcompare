@@ -22,6 +22,7 @@ JCompare is a professional web-based directory comparison tool designed for Java
 
 ### 💻 User Experience
 - **Desktop Application Feel**: A fluid, high-resolution UI built with Tailwind CSS that maximizes screen real estate.
+- **Export to Excel**: The Table View includes an "Export to Excel" button that generates a CSV file with detailed comparison data, including both source and destination paths for moved items.
 - **Integrated Directory Selector**: A custom JTE-based modal for browsing and selecting directories directly within the app.
 - **Persistence**: Remembers the last selected directory paths using the browser's local storage.
 - **Advanced Filtering**: The Table View includes multi-select filters for both file types and change statuses, working together (logical AND) to refine results.

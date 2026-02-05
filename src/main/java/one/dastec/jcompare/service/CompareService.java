@@ -68,11 +68,11 @@ public class CompareService {
     public DiffNode compareDirectories(Path left, Path right) throws IOException {
         String rootName = right != null ? right.getFileName().toString() : (left != null ? left.getFileName().toString() : "root");
         DiffNode root = compare(rootName, left, right, "");
-        detectMoves(root);
+        detectMoves(root, left, right);
         return root;
     }
 
-    private void detectMoves(DiffNode root) {
+    private void detectMoves(DiffNode root, Path leftBase, Path rightBase) throws IOException {
         List<DiffNode> addedFiles = new ArrayList<>();
         List<DiffNode> removedFiles = new ArrayList<>();
         collectAddedAndRemovedFiles(root, addedFiles, removedFiles);
@@ -81,13 +81,20 @@ public class CompareService {
             for (DiffNode removed : removedFiles) {
                 if (added.getStatus() == DiffNode.DiffStatus.ADDED && removed.getStatus() == DiffNode.DiffStatus.REMOVED) {
                     if (added.getName().equals(removed.getName())) {
-                        // For simplicity, just matching by name as per "If a java class exists in a different location"
-                        // but we could also check content mismatch here if needed.
-                        added.setStatus(DiffNode.DiffStatus.MOVED);
+                        Path leftFile = leftBase.resolve(removed.getRelativePath());
+                        Path rightFile = rightBase.resolve(added.getRelativePath());
+
+                        if (Files.mismatch(leftFile, rightFile) == -1) {
+                            added.setStatus(DiffNode.DiffStatus.MOVED);
+                        } else {
+                            added.setStatus(DiffNode.DiffStatus.MOVED_MODIFIED);
+                            FileDiff fileDiff = compareFiles(leftFile, rightFile);
+                            added.setAdded(fileDiff.added());
+                            added.setRemoved(fileDiff.removed());
+                            added.setModified(fileDiff.modified());
+                            added.setPercentage(fileDiff.percentage());
+                        }
                         added.setSourcePath(removed.getRelativePath());
-                        // removed.setStatus(DiffNode.DiffStatus.REMOVED); // Keep as removed for now? 
-                        // Or should we mark it as MOVED_FROM? The requirement says "should be displayed as moved and the source should be shown"
-                        // Usually this means the new location is marked as MOVED and shows where it came from.
                     }
                 }
             }

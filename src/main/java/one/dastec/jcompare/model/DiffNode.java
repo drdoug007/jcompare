@@ -21,6 +21,6 @@ public class DiffNode {
     private List<DiffNode> children = new ArrayList<>();
 
     public enum DiffStatus {
-        ADDED, REMOVED, MODIFIED, IDENTICAL, MOVED
+        ADDED, REMOVED, MODIFIED, IDENTICAL, MOVED, MOVED_MODIFIED
     }
 }

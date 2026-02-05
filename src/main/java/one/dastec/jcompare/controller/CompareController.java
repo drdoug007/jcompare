@@ -80,8 +80,14 @@ public class CompareController {
             @RequestParam String leftPath,
             @RequestParam String rightPath,
             @RequestParam String relativePath,
+            @RequestParam(required = false) String sourcePath,
             Model model) throws IOException {
-        Path left = Paths.get(leftPath).resolve(relativePath);
+        Path left;
+        if (sourcePath != null && !sourcePath.isEmpty()) {
+            left = Paths.get(leftPath).resolve(sourcePath);
+        } else {
+            left = Paths.get(leftPath).resolve(relativePath);
+        }
         Path right = Paths.get(rightPath).resolve(relativePath);
         
         CompareService.FileDiff fileDiff = compareService.compareFiles(
@@ -96,6 +102,58 @@ public class CompareController {
         model.addAttribute("fileName", Paths.get(relativePath).getFileName().toString());
         
         return "fileDiff";
+    }
+
+    @GetMapping("/export")
+    public void export(
+            @RequestParam String leftPath,
+            @RequestParam String rightPath,
+            @RequestParam(required = false, defaultValue = "all") String typeFilter,
+            @RequestParam(required = false, defaultValue = "all") String statusFilter,
+            jakarta.servlet.http.HttpServletResponse response) throws IOException {
+
+        Path left = Paths.get(leftPath);
+        Path right = Paths.get(rightPath);
+        DiffNode diffResult = compareService.compareDirectories(left, right);
+        List<CompareService.DiffEntry> tableResult = compareService.flatten(diffResult);
+
+        response.setContentType("text/csv");
+        response.setHeader("Content-Disposition", "attachment; filename=\"jcompare_export.csv\"");
+
+        try (java.io.PrintWriter writer = response.getWriter()) {
+            // Header
+            writer.println("Destination Path,Source Path,Type,Status,Diff %,Added,Modified,Deleted");
+
+            for (CompareService.DiffEntry entry : tableResult) {
+                // Apply filters if they were provided (to match UI view)
+                if (!"all".equals(typeFilter)) {
+                    String type = entry.isDirectory() ? "directory" : (entry.path().endsWith(".java") ? "java" : (entry.path().endsWith(".xml") ? "xml" : (entry.path().endsWith(".json") ? "json" : (entry.path().endsWith(".yaml") || entry.path().endsWith(".yml") ? "yaml" : (entry.path().endsWith(".properties") ? "props" : "file")))));
+                    if (!typeFilter.equals(type)) continue;
+                }
+                if (!"all".equals(statusFilter)) {
+                    if (!statusFilter.equals(entry.status().name().toLowerCase())) continue;
+                }
+
+                String destination = entry.path();
+                String source = entry.sourcePath() != null ? entry.sourcePath() : "";
+                String type = entry.isDirectory() ? "Directory" : "File";
+                String status = entry.status().name();
+                String diffPct = entry.isDirectory() ? "-" : (entry.status() == DiffNode.DiffStatus.MOVED ? "-" : String.format("%.1f%%", entry.percentage()));
+                String added = (entry.isDirectory() || entry.status() == DiffNode.DiffStatus.MOVED) ? "-" : String.valueOf(entry.added());
+                String modified = (entry.isDirectory() || entry.status() == DiffNode.DiffStatus.MOVED) ? "-" : String.valueOf(entry.modified());
+                String deleted = (entry.isDirectory() || entry.status() == DiffNode.DiffStatus.MOVED) ? "-" : String.valueOf(entry.removed());
+
+                writer.println(String.format("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"",
+                        destination.replace("\"", "\"\""),
+                        source.replace("\"", "\"\""),
+                        type,
+                        status,
+                        diffPct,
+                        added,
+                        modified,
+                        deleted));
+            }
+        }
     }
 
     public record FileItem(String name, String path, boolean isDirectory) {}

@@ -14,6 +14,7 @@ Use syntax highlighting to see the differences.
 The Table View displays columns for the Path, Type, Status, and for modified files, the percentage, lines added, modified, and deleted differences between the two versions of the file.
 The Table View type column should have a specific icon for each file type (Java, XML, JSON, YAML, etc.). The types displayed should be filterable via a dropdown in the column header.
 The Table View status column should have a filterable dropdown in the header for each status, such as added, modified, or deleted. Both filters should work together to refine the results.
+The Table View should have an export button so the table can be exported to an Excel Spreadsheet. The moved items should have both the source and destination columns.
 The application should store the last selected directories in the browser's local storage.
 When displayed in a browser, the application should use most of the available screen real estate.
 

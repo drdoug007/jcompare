@@ -18,6 +18,11 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 class CompareControllerTest {
@@ -27,6 +32,69 @@ class CompareControllerTest {
 
     @MockitoBean
     private CompareService compareService;
+
+    @Autowired
+    private WebApplicationContext webApplicationContext;
+
+    @Test
+    void testExport() throws Exception {
+        DiffNode diffNode = DiffNode.builder()
+                .name("root")
+                .status(DiffNode.DiffStatus.MOVED)
+                .relativePath("dest.txt")
+                .sourcePath("source.txt")
+                .isDirectory(false)
+                .build();
+
+        when(compareService.compareDirectories(any(), any())).thenReturn(diffNode);
+        when(compareService.flatten(any())).thenReturn(List.of(
+                new CompareService.DiffEntry("root/dest.txt", false, DiffNode.DiffStatus.MOVED, "dest.txt", 0, 0, 0, 0.0, "source.txt")
+        ));
+
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        mockMvc.perform(get("/export")
+                        .param("leftPath", "/tmp/a")
+                        .param("rightPath", "/tmp/b")
+                        .param("typeFilter", "all")
+                        .param("statusFilter", "all"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("text/csv"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"jcompare_export.csv\""))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Destination Path,Source Path,Type,Status,Diff %,Added,Modified,Deleted")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"root/dest.txt\",\"source.txt\",\"File\",\"MOVED\",\"-\",\"-\",\"-\",\"-\"")));
+    }
+
+    @Test
+    void testExportWithFilters() throws Exception {
+        DiffNode diffNode = DiffNode.builder().name("root").build();
+        when(compareService.compareDirectories(any(), any())).thenReturn(diffNode);
+        when(compareService.flatten(any())).thenReturn(List.of(
+                new CompareService.DiffEntry("file.java", false, DiffNode.DiffStatus.ADDED, "file.java", 10, 0, 0, 100.0, null),
+                new CompareService.DiffEntry("other.txt", false, DiffNode.DiffStatus.REMOVED, "other.txt", 0, 5, 0, 100.0, null)
+        ));
+
+        MockMvc mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
+        
+        // Filter by type: java
+        mockMvc.perform(get("/export")
+                        .param("leftPath", "/tmp/a")
+                        .param("rightPath", "/tmp/b")
+                        .param("typeFilter", "java")
+                        .param("statusFilter", "all"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("file.java")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("other.txt"))));
+
+        // Filter by status: removed
+        mockMvc.perform(get("/export")
+                        .param("leftPath", "/tmp/a")
+                        .param("rightPath", "/tmp/b")
+                        .param("typeFilter", "all")
+                        .param("statusFilter", "removed"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("other.txt")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("file.java"))));
+    }
 
     @Test
     void testIndexWithoutParams() throws IOException {
@@ -110,7 +178,7 @@ class CompareControllerTest {
         when(compareService.compareFiles(any(), any())).thenReturn(new CompareService.FileDiff(List.of(), 0, 0, 0, 0.0));
         
         Model model = new ConcurrentModel();
-        String view = compareController.fileDiff("/tmp/a", "/tmp/b", "file.java", model);
+        String view = compareController.fileDiff("/tmp/a", "/tmp/b", "file.java", null, model);
         
         assertEquals("fileDiff", view);
         assertEquals("/tmp/a", model.getAttribute("leftPath"));

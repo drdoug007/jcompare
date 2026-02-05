@@ -18,7 +18,7 @@
         .status-removed { color: #dc2626; }
         .status-modified { color: #d97706; }
         .status-identical { color: #374151; }
-        .status-moved { color: #7c3aed; }
+        .status-moved, .status-moved_modified { color: #7c3aed; }
         .folder::before { content: "📁 "; }
         .file::before { content: "📄 "; }
         .file-java::before { content: "☕ "; }
@@ -93,7 +93,15 @@
 
             @if(diffResult != null)
                 <div class="mt-12 border-t border-gray-200 pt-8">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-6">Comparison Results</h2>
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Comparison Results</h2>
+                        @if("table".equals(viewType) && tableResult != null)
+                            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-sm transition-all flex items-center space-x-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                                <span>Export to Excel</span>
+                            </button>
+                        @endif
+                    </div>
                     
                     <div class="bg-white border border-gray-200 rounded overflow-hidden">
                         @if("table".equals(viewType) && tableResult != null)
@@ -125,6 +133,7 @@
                                                     <option value="removed">Removed</option>
                                                     <option value="modified">Modified</option>
                                                     <option value="moved">Moved</option>
+                                                    <option value="moved_modified">Moved Mod</option>
                                                     <option value="identical">Identical</option>
                                                 </select>
                                             </div>
@@ -143,7 +152,8 @@
                                             data-left="${leftPath}"
                                             data-right="${rightPath}"
                                             data-rel="${entry.relativePath()}"
-                                            ondblclick="if(this.dataset.rel) openFileDiff(this.dataset.left, this.dataset.right, this.dataset.rel)">
+                                            data-source="${entry.sourcePath()}"
+                                            ondblclick="if(this.dataset.rel) openFileDiff(this.dataset.left, this.dataset.right, this.dataset.rel, this.dataset.source)">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${entry.path()}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 @if(entry.isDirectory())
@@ -173,8 +183,8 @@
                                                 @endif
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium status-${entry.status().name().toLowerCase()}">
-                                                ${entry.status()}
-                                                @if(entry.status() == DiffNode.DiffStatus.MOVED && entry.sourcePath() != null)
+                                                ${entry.status().name().replace("_", "-")}
+                                                @if((entry.status() == DiffNode.DiffStatus.MOVED || entry.status() == DiffNode.DiffStatus.MOVED_MODIFIED) && entry.sourcePath() != null)
                                                     <div class="text-[10px] text-gray-400 font-normal">from ${entry.sourcePath()}</div>
                                                 @endif
                                             </td>
@@ -214,15 +224,18 @@
             document.getElementById('loading-overlay').classList.add('hidden');
         }
 
-        function openFileDiff(leftPath, rightPath, relativePath) {
-            console.log("openFileDiff called", {leftPath, rightPath, relativePath});
+        function openFileDiff(leftPath, rightPath, relativePath, sourcePath) {
+            console.log("openFileDiff called", {leftPath, rightPath, relativePath, sourcePath});
             const modal = document.getElementById('diff-modal');
             const iframe = document.getElementById('diff-iframe');
             if (!modal || !iframe) {
                 console.error("Modal or Iframe not found");
                 return;
             }
-            const url = "/diff?leftPath=" + encodeURIComponent(leftPath) + "&rightPath=" + encodeURIComponent(rightPath) + "&relativePath=" + encodeURIComponent(relativePath);
+            let url = "/diff?leftPath=" + encodeURIComponent(leftPath) + "&rightPath=" + encodeURIComponent(rightPath) + "&relativePath=" + encodeURIComponent(relativePath);
+            if (sourcePath) {
+                url += "&sourcePath=" + encodeURIComponent(sourcePath);
+            }
             console.log("Loading URL:", url);
             showLoading();
             // Ensure previous handlers are cleared
@@ -241,6 +254,20 @@
             const iframe = document.getElementById('diff-iframe');
             iframe.src = 'about:blank';
             modal.classList.add('hidden');
+        }
+
+        function exportToExcel() {
+            const leftPath = document.getElementById('leftPath').value;
+            const rightPath = document.getElementById('rightPath').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            const url = "/export?leftPath=" + encodeURIComponent(leftPath) + 
+                        "&rightPath=" + encodeURIComponent(rightPath) +
+                        "&typeFilter=" + encodeURIComponent(typeFilter) +
+                        "&statusFilter=" + encodeURIComponent(statusFilter);
+            
+            window.location.href = url;
         }
 
         // Local Storage persistence

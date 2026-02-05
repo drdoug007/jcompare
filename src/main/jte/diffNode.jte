@@ -8,11 +8,12 @@
          data-left="${leftPath}"
          data-right="${rightPath}"
          data-rel="${node.getRelativePath()}"
-         ondblclick="if(this.dataset.rel) openFileDiff(this.dataset.left, this.dataset.right, this.dataset.rel)">
+         data-source="${node.getSourcePath()}"
+         ondblclick="if(this.dataset.rel) openFileDiff(this.dataset.left, this.dataset.right, this.dataset.rel, this.dataset.source)">
         <span class="${node.isDirectory() ? "folder" : "file"}"></span>
         <span class="text-sm font-medium">${node.getName()}</span>
-        <span class="text-xs uppercase px-2 py-0.5 rounded bg-gray-100">${node.getStatus()}</span>
-        @if(node.getStatus() == DiffNode.DiffStatus.MOVED && node.getSourcePath() != null)
+        <span class="text-xs uppercase px-2 py-0.5 rounded bg-gray-100">${node.getStatus().name().replace("_", "-")}</span>
+        @if((node.getStatus() == DiffNode.DiffStatus.MOVED || node.getStatus() == DiffNode.DiffStatus.MOVED_MODIFIED) && node.getSourcePath() != null)
             <span class="text-[10px] text-gray-400 font-normal">from ${node.getSourcePath()}</span>
         @endif
     </div>
