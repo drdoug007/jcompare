@@ -12,6 +12,9 @@
         <span class="${node.isDirectory() ? "folder" : "file"}"></span>
         <span class="text-sm font-medium">${node.getName()}</span>
         <span class="text-xs uppercase px-2 py-0.5 rounded bg-gray-100">${node.getStatus()}</span>
+        @if(node.getStatus() == DiffNode.DiffStatus.MOVED && node.getSourcePath() != null)
+            <span class="text-[10px] text-gray-400 font-normal">from ${node.getSourcePath()}</span>
+        @endif
     </div>
     @if(!node.getChildren().isEmpty())
         <ul class="ml-6 border-l border-gray-200 pl-4 mt-1 space-y-1">

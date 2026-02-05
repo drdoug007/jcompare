@@ -16,10 +16,11 @@ public class DiffNode {
     private int modified;
     private double percentage;
     private String relativePath;
+    private String sourcePath;
     @Builder.Default
     private List<DiffNode> children = new ArrayList<>();
 
     public enum DiffStatus {
-        ADDED, REMOVED, MODIFIED, IDENTICAL
+        ADDED, REMOVED, MODIFIED, IDENTICAL, MOVED
     }
 }

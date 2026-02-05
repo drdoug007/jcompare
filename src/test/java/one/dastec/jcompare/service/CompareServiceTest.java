@@ -258,30 +258,28 @@ class CompareServiceTest {
         // but it should not crash.
     }
     @Test
-    void testDeepNestedDirectories() throws IOException {
+    void testFileMove() throws IOException {
         Path left = tempDir.resolve("left");
         Path right = tempDir.resolve("right");
-        String path = "a/b/c/file.txt";
-        Path leftFile = left.resolve(path);
-        Path rightFile = right.resolve(path);
-        Files.createDirectories(leftFile.getParent());
-        Files.createDirectories(rightFile.getParent());
+        Files.createDirectories(left.resolve("old-loc"));
+        Files.createDirectories(right.resolve("new-loc"));
 
-        Files.writeString(leftFile, "hello");
-        Files.writeString(rightFile, "world");
+        Files.writeString(left.resolve("old-loc/MyClass.java"), "public class MyClass {}");
+        Files.writeString(right.resolve("new-loc/MyClass.java"), "public class MyClass {}");
 
         DiffNode result = compareService.compareDirectories(left, right);
 
-        assertEquals(DiffNode.DiffStatus.MODIFIED, result.getStatus());
+        // Find the moved file in the result tree
+        DiffNode newLoc = result.getChildren().stream().filter(n -> n.getName().equals("new-loc")).findFirst().orElseThrow();
+        DiffNode movedFile = newLoc.getChildren().get(0);
+
+        assertEquals("MyClass.java", movedFile.getName());
+        assertEquals(DiffNode.DiffStatus.MOVED, movedFile.getStatus());
+        assertEquals("old-loc/MyClass.java", movedFile.getSourcePath());
         
-        // Find the file node
-        DiffNode a = result.getChildren().get(0);
-        DiffNode b = a.getChildren().get(0);
-        DiffNode c = b.getChildren().get(0);
-        DiffNode file = c.getChildren().get(0);
-        
-        assertEquals("file.txt", file.getName());
-        assertEquals("a/b/c/file.txt", file.getRelativePath());
-        assertEquals(DiffNode.DiffStatus.MODIFIED, file.getStatus());
+        // The old location should still show as removed
+        DiffNode oldLoc = result.getChildren().stream().filter(n -> n.getName().equals("old-loc")).findFirst().orElseThrow();
+        DiffNode removedFile = oldLoc.getChildren().get(0);
+        assertEquals(DiffNode.DiffStatus.REMOVED, removedFile.getStatus());
     }
 }

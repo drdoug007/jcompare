@@ -18,6 +18,7 @@
         .status-removed { color: #dc2626; }
         .status-modified { color: #d97706; }
         .status-identical { color: #374151; }
+        .status-moved { color: #7c3aed; }
         .folder::before { content: "📁 "; }
         .file::before { content: "📄 "; }
         .file-java::before { content: "☕ "; }
@@ -25,9 +26,28 @@
         .file-json::before { content: "{} "; }
         .file-yaml::before { content: "🔑 "; }
         .file-properties::before { content: "⚙️ "; }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans text-gray-900">
+    <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-[100]">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex flex-col items-center">
+            <div class="spinner mb-4"></div>
+            <p class="text-gray-700 font-semibold">Please wait...</p>
+        </div>
+    </div>
+
     <div class="max-w-full mx-auto p-4 md:p-6">
         <header class="mb-6 border-b border-gray-300 pb-4">
             <h1 class="text-3xl font-bold text-blue-800">JCompare</h1>
@@ -104,6 +124,7 @@
                                                     <option value="added">Added</option>
                                                     <option value="removed">Removed</option>
                                                     <option value="modified">Modified</option>
+                                                    <option value="moved">Moved</option>
                                                     <option value="identical">Identical</option>
                                                 </select>
                                             </div>
@@ -151,11 +172,16 @@
                                                     @endif
                                                 @endif
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium status-${entry.status().name().toLowerCase()}">${entry.status()}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium status-${entry.status().name().toLowerCase()}">
+                                                ${entry.status()}
+                                                @if(entry.status() == DiffNode.DiffStatus.MOVED && entry.sourcePath() != null)
+                                                    <div class="text-[10px] text-gray-400 font-normal">from ${entry.sourcePath()}</div>
+                                                @endif
+                                            </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.isDirectory() ? "-" : String.valueOf(String.format("%.1f%%", entry.percentage()))}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${entry.isDirectory() ? "-" : String.valueOf(entry.added())}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-semibold">${entry.isDirectory() ? "-" : String.valueOf(entry.modified())}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">${entry.isDirectory() ? "-" : String.valueOf(entry.removed())}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">${entry.isDirectory() || entry.status() == DiffNode.DiffStatus.MOVED ? "-" : String.valueOf(entry.added())}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-amber-600 font-semibold">${entry.isDirectory() || entry.status() == DiffNode.DiffStatus.MOVED ? "-" : String.valueOf(entry.modified())}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-semibold">${entry.isDirectory() || entry.status() == DiffNode.DiffStatus.MOVED ? "-" : String.valueOf(entry.removed())}</td>
                                         </tr>
                                     @endfor
                                 </tbody>
@@ -180,6 +206,14 @@
     @template.directorySelector()
     @template.diffModal()
     <script>
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
         function openFileDiff(leftPath, rightPath, relativePath) {
             console.log("openFileDiff called", {leftPath, rightPath, relativePath});
             const modal = document.getElementById('diff-modal');
@@ -190,6 +224,14 @@
             }
             const url = "/diff?leftPath=" + encodeURIComponent(leftPath) + "&rightPath=" + encodeURIComponent(rightPath) + "&relativePath=" + encodeURIComponent(relativePath);
             console.log("Loading URL:", url);
+            showLoading();
+            // Ensure previous handlers are cleared
+            iframe.onload = function() {
+                hideLoading();
+            };
+            iframe.onerror = function() {
+                hideLoading();
+            };
             iframe.src = url;
             modal.classList.remove('hidden');
         }
@@ -218,6 +260,7 @@
 
             // Save to localStorage when form is submitted
             document.querySelector('form').addEventListener('submit', () => {
+                showLoading();
                 localStorage.setItem('jcompare_leftPath', leftInput.value);
                 localStorage.setItem('jcompare_rightPath', rightInput.value);
             });

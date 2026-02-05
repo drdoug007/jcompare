@@ -67,7 +67,44 @@ public class CompareService {
 
     public DiffNode compareDirectories(Path left, Path right) throws IOException {
         String rootName = right != null ? right.getFileName().toString() : (left != null ? left.getFileName().toString() : "root");
-        return compare(rootName, left, right, "");
+        DiffNode root = compare(rootName, left, right, "");
+        detectMoves(root);
+        return root;
+    }
+
+    private void detectMoves(DiffNode root) {
+        List<DiffNode> addedFiles = new ArrayList<>();
+        List<DiffNode> removedFiles = new ArrayList<>();
+        collectAddedAndRemovedFiles(root, addedFiles, removedFiles);
+
+        for (DiffNode added : addedFiles) {
+            for (DiffNode removed : removedFiles) {
+                if (added.getStatus() == DiffNode.DiffStatus.ADDED && removed.getStatus() == DiffNode.DiffStatus.REMOVED) {
+                    if (added.getName().equals(removed.getName())) {
+                        // For simplicity, just matching by name as per "If a java class exists in a different location"
+                        // but we could also check content mismatch here if needed.
+                        added.setStatus(DiffNode.DiffStatus.MOVED);
+                        added.setSourcePath(removed.getRelativePath());
+                        // removed.setStatus(DiffNode.DiffStatus.REMOVED); // Keep as removed for now? 
+                        // Or should we mark it as MOVED_FROM? The requirement says "should be displayed as moved and the source should be shown"
+                        // Usually this means the new location is marked as MOVED and shows where it came from.
+                    }
+                }
+            }
+        }
+    }
+
+    private void collectAddedAndRemovedFiles(DiffNode node, List<DiffNode> added, List<DiffNode> removed) {
+        if (!node.isDirectory()) {
+            if (node.getStatus() == DiffNode.DiffStatus.ADDED) {
+                added.add(node);
+            } else if (node.getStatus() == DiffNode.DiffStatus.REMOVED) {
+                removed.add(node);
+            }
+        }
+        for (DiffNode child : node.getChildren()) {
+            collectAddedAndRemovedFiles(child, added, removed);
+        }
     }
 
     public List<DiffEntry> flatten(DiffNode node) {
@@ -87,13 +124,13 @@ public class CompareService {
             currentRelPath = relativePath + "/" + node.getName();
         }
 
-        entries.add(new DiffEntry(currentPath, node.isDirectory(), node.getStatus(), currentRelPath, node.getAdded(), node.getRemoved(), node.getModified(), node.getPercentage()));
+        entries.add(new DiffEntry(currentPath, node.isDirectory(), node.getStatus(), currentRelPath, node.getAdded(), node.getRemoved(), node.getModified(), node.getPercentage(), node.getSourcePath()));
         for (DiffNode child : node.getChildren()) {
             flatten(child, currentPath, currentRelPath, entries);
         }
     }
 
-    public record DiffEntry(String path, boolean isDirectory, DiffNode.DiffStatus status, String relativePath, int added, int removed, int modified, double percentage) {}
+    public record DiffEntry(String path, boolean isDirectory, DiffNode.DiffStatus status, String relativePath, int added, int removed, int modified, double percentage, String sourcePath) {}
 
     public record FileDiff(List<FileDiffLine> lines, int added, int removed, int modified, double percentage) {}
 

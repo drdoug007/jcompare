@@ -33,28 +33,33 @@
     }
 
     async function loadDirectories(path) {
-        const response = await fetch('/api/ls?path=' + encodeURIComponent(path));
-        const dirs = await response.json();
-        const listContainer = document.getElementById('directory-list');
-        listContainer.innerHTML = '';
-        
-        // Update display path
-        document.getElementById('current-path-display').value = dirs.length > 0 ? (path || "Home") : path;
-        if (!path && dirs.length > 0) {
-            // If path was empty, we are at home, let's find out what that path is from the first item's parent
-            // But our API doesn't return parent. Let's assume the API handles empty as home.
-        }
+        if (typeof showLoading === 'function') showLoading();
+        try {
+            const response = await fetch('/api/ls?path=' + encodeURIComponent(path));
+            const dirs = await response.json();
+            const listContainer = document.getElementById('directory-list');
+            listContainer.innerHTML = '';
+            
+            // Update display path
+            document.getElementById('current-path-display').value = dirs.length > 0 ? (path || "Home") : path;
+            if (!path && dirs.length > 0) {
+                // If path was empty, we are at home, let's find out what that path is from the first item's parent
+                // But our API doesn't return parent. Let's assume the API handles empty as home.
+            }
 
-        dirs.forEach(dir => {
-            const div = document.createElement('div');
-            div.className = "flex items-center p-2 hover:bg-blue-50 cursor-pointer rounded";
-            div.onclick = () => {
-                currentPath = dir.path;
-                loadDirectories(currentPath);
-            };
-            div.innerHTML = '<span class="mr-2">📁</span><span>' + dir.name + '</span>';
-            listContainer.appendChild(div);
-        });
+            dirs.forEach(dir => {
+                const div = document.createElement('div');
+                div.className = "flex items-center p-2 hover:bg-blue-50 cursor-pointer rounded";
+                div.onclick = () => {
+                    currentPath = dir.path;
+                    loadDirectories(currentPath);
+                };
+                div.innerHTML = '<span class="mr-2">📁</span><span>' + dir.name + '</span>';
+                listContainer.appendChild(div);
+            });
+        } finally {
+            if (typeof hideLoading === 'function') hideLoading();
+        }
     }
 
     function goUp() {
