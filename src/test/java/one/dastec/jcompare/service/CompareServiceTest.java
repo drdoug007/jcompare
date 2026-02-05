@@ -245,6 +245,19 @@ class CompareServiceTest {
         assertEquals(0.0, diff.percentage());
     }
     @Test
+    void testCompareFilesWithEncodingIssue() throws IOException {
+        Path file = tempDir.resolve("encoding.txt");
+        // Write some bytes that are NOT valid UTF-8
+        // For example, 0xFF is not a valid UTF-8 start byte.
+        byte[] invalidUtf8 = new byte[] { (byte) 0xFF, (byte) 0xFE, 'A', 'B', 'C' };
+        Files.write(file, invalidUtf8);
+        // This should not throw MalformedInputException
+        CompareService.FileDiff diff = compareService.compareFiles(file, file);
+        assertNotNull(diff);
+        // It might be empty or contain some weird characters depending on fallback charset,
+        // but it should not crash.
+    }
+    @Test
     void testDeepNestedDirectories() throws IOException {
         Path left = tempDir.resolve("left");
         Path right = tempDir.resolve("right");

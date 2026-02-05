@@ -26,7 +26,7 @@ public class CompareService {
         Path ignoreFile = Path.of(".jcompare-ignore");
         if (Files.exists(ignoreFile)) {
             try {
-                List<String> lines = Files.readAllLines(ignoreFile);
+                List<String> lines = readAllLines(ignoreFile);
                 for (String line : lines) {
                     line = line.trim();
                     if (!line.isEmpty() && !line.startsWith("#")) {
@@ -97,9 +97,25 @@ public class CompareService {
 
     public record FileDiff(List<FileDiffLine> lines, int added, int removed, int modified, double percentage) {}
 
+    private List<String> readAllLines(Path path) throws IOException {
+        if (path == null || !Files.exists(path)) {
+            return Collections.emptyList();
+        }
+        try {
+            return Files.readAllLines(path, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.nio.charset.MalformedInputException e) {
+            try {
+                return Files.readAllLines(path, java.nio.charset.Charset.defaultCharset());
+            } catch (java.nio.charset.MalformedInputException e2) {
+                // Fallback to ISO-8859-1 which reads every byte as a character
+                return Files.readAllLines(path, java.nio.charset.StandardCharsets.ISO_8859_1);
+            }
+        }
+    }
+
     public FileDiff compareFiles(Path left, Path right) throws IOException {
-        List<String> leftLines = left != null && Files.exists(left) ? Files.readAllLines(left) : Collections.emptyList();
-        List<String> rightLines = right != null && Files.exists(right) ? Files.readAllLines(right) : Collections.emptyList();
+        List<String> leftLines = readAllLines(left);
+        List<String> rightLines = readAllLines(right);
 
         List<FileDiffLine> diffLines = new ArrayList<>();
         int maxSize = Math.max(leftLines.size(), rightLines.size());
