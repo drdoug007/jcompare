@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: jcompare
+gg:
+  jte:
+    development-mode: true
+    template-location: src/main/jte

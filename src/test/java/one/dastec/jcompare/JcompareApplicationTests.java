@@ -1,0 +1,14 @@
+package one.dastec.jcompare;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class JcompareApplicationTests {
+
+	@Test
+	void main() {
+		JcompareApplication.main(new String[] {"--server.port=0"});
+	}
+
+}

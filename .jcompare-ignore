@@ -1,0 +1,10 @@
+target
+.git
+build
+node_modules
+.DS_Store
+*.class
+.idea
+.junie
+.gitignore
+.svn
