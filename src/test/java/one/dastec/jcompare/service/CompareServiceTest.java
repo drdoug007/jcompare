@@ -343,4 +343,41 @@ class CompareServiceTest {
         assertTrue(movedFile.getModified() > 0 || movedFile.getAdded() > 0 || movedFile.getRemoved() > 0);
         assertTrue(movedFile.getPercentage() > 0);
     }
+    @Test
+    void testJavaMoveWithDifferentPackages() throws IOException {
+        Path left = tempDir.resolve("left_pkg");
+        Path right = tempDir.resolve("right_pkg");
+        Files.createDirectories(left.resolve("com/fisglobal/base"));
+        Files.createDirectories(right.resolve("com/fisglobal/bean"));
+
+        Files.writeString(left.resolve("com/fisglobal/base/Application.java"), "package com.fisglobal.base;\npublic class Application {}");
+        Files.writeString(right.resolve("com/fisglobal/bean/Application.java"), "package com.fisglobal.bean;\npublic class Application {}");
+
+        DiffNode result = compareService.compareDirectories(left, right);
+        List<CompareService.DiffEntry> entries = compareService.flatten(result);
+
+        // They should NOT be matched as MOVED because the packages are different
+        assertFalse(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.MOVED), "Should NOT be matched as MOVED");
+        assertFalse(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.MOVED_MODIFIED), "Should NOT be matched as MOVED_MODIFIED");
+        
+        assertTrue(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.REMOVED && e.relativePath().equals("com/fisglobal/base/Application.java")));
+        assertTrue(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.ADDED && e.relativePath().equals("com/fisglobal/bean/Application.java")));
+    }
+
+    @Test
+    void testJavaMoveWithSamePackage() throws IOException {
+        Path left = tempDir.resolve("left_same_pkg");
+        Path right = tempDir.resolve("right_same_pkg");
+        Files.createDirectories(left.resolve("JavaSource/com/fisglobal/base"));
+        Files.createDirectories(right.resolve("src/main/com/fisglobal/base"));
+
+        Files.writeString(left.resolve("JavaSource/com/fisglobal/base/Application.java"), "package com.fisglobal.base;\npublic class Application {}");
+        Files.writeString(right.resolve("src/main/com/fisglobal/base/Application.java"), "package com.fisglobal.base;\npublic class Application {}");
+
+        DiffNode result = compareService.compareDirectories(left, right);
+        List<CompareService.DiffEntry> entries = compareService.flatten(result);
+
+        // They SHOULD be matched as MOVED because the package is the same
+        assertTrue(entries.stream().anyMatch(e -> e.status() == DiffNode.DiffStatus.MOVED && e.relativePath().equals("src/main/com/fisglobal/base/Application.java")), "Should be matched as MOVED");
+    }
 }

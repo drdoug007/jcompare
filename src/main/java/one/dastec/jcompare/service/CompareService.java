@@ -86,6 +86,17 @@ public class CompareService {
                         Path leftFile = leftBase.resolve(removed.getRelativePath());
                         Path rightFile = rightBase.resolve(added.getRelativePath());
 
+                        // If it's a Java file, verify the package name matches the expected package for both sides
+                        if (added.getName().endsWith(".java")) {
+                            String leftPackage = extractPackageName(leftFile);
+                            String rightPackage = extractPackageName(rightFile);
+
+                            // They must have the same package name in the source code
+                            if (leftPackage == null || !leftPackage.equals(rightPackage)) {
+                                continue;
+                            }
+                        }
+
                         if (Files.mismatch(leftFile, rightFile) == -1) {
                             added.setStatus(DiffNode.DiffStatus.MOVED);
                         } else {
@@ -175,6 +186,24 @@ public class CompareService {
                 return Files.readAllLines(path, java.nio.charset.StandardCharsets.ISO_8859_1);
             }
         }
+    }
+
+    private String extractPackageName(Path path) {
+        if (path == null || !path.toString().endsWith(".java")) {
+            return null;
+        }
+        try {
+            List<String> lines = readAllLines(path);
+            for (String line : lines) {
+                line = line.trim();
+                if (line.startsWith("package ") && line.endsWith(";")) {
+                    return line.substring(8, line.length() - 1).trim();
+                }
+            }
+        } catch (IOException e) {
+            // Ignore
+        }
+        return "";
     }
 
     public FileDiff compareFiles(Path left, Path right) throws IOException {
